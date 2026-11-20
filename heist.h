@@ -52,4 +52,14 @@ struct Location {
     Location() : locName(""), letterClueLoc(' '), boardPosLoc(0), locRow(WORD_1), locSearchFlag(false) {}
 };
 
+//all helper functions
+string trimString(const string& s);
+string toUpperString(const string& s);
+string intToString(int value);
+int stringToInt(const string& s, bool& ok);
+int splitLine(const string& line, string fields[], int maxFields);
+string normalizeRole(const string& role);
+string getTodayDate();
+void clearScreen();
+
 #endif
