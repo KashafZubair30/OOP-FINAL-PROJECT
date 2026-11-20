@@ -2,7 +2,7 @@
 
 ### A Console Based Detective Mystery Game
 
-**Object-Oriented Programming Semester Project**\
+**Object-Oriented Programming Semester Project**
 
 ## Team Members
 
