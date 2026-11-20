@@ -1,0 +1,28 @@
+========================================================
+                    THE LOCKER HEIST
+         A Detective Game backed by OOP Principles
+========================================================
+Developed By:
+  Kashaf Fatima | 25F-3000
+  Noor Ul Eiman | 25F-3039
+
+Course: CL1004 - Object Oriented Programming
+Section: SE - 3B
+Semester: Fall 2026
+Lab Instructor: Sir Mozeb
+
+-------------- ABOUT THE GAME --------------
+A wealthy business owner hosted a party at their cottage.
+During the party, a locker hidden behind a bookshelf in
+the Study Room was robbed. Eight people were present and
+one of them is the CULPRIT. The owner's PA has hired you
+as a private detective to investigate the case.
+
+-------------- YOUR MISSION --------------
+1. Visit seven locations. Each gives a letter and a position.
+2. Interview eight people. Each gives a letter and a position.
+3. Letters are placed on the Scrabble board automatically.
+4. When a row is full, form the word.
+5. Both words together point to the culprit's role.
+
+Good luck, Detective.
