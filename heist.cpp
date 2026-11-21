@@ -119,3 +119,117 @@ void clearScreen() {
 #endif
 }
 
+//sets the common data of every character
+Character::Character(const string& name, const string& role, const string& nat) : characterName(name), characterRole(role), nationality(nat), isCulprit(false), interviewed(false) {
+}
+
+//virtual destructor 
+Character::~Character() {}
+
+//by default anyone can be interviewed
+int Character::getMinCredibility() const {
+    return 0;
+}
+
+//default clue 
+Clue Character::getClue() const {
+    return Clue();
+}
+
+//getters
+string Character::getName() const {
+    return characterName;
+}
+string Character::getRole() const {
+    return characterRole;
+}
+string Character::getNationality() const {
+    return nationality;
+}
+bool Character::getIsCulprit() const {
+    return isCulprit;
+}
+bool Character::isInterviewed() const {
+    return interviewed;
+}
+void Character::setInterviewed(bool value) {
+    interviewed = value;
+}
+
+//prints name, role and nationality
+void Character::showProfile() const {
+    cout << "  Name: " << characterName << " | Role: " << characterRole
+        << " | Nationality: " << nationality << endl;
+}
+
+//creates the player with starting credibility and zero turns
+Detective::Detective(const string& name, int startCredibility)
+    : Character(name, "Detective", "Malay"), credibility(startCredibility), turns(0) {
+}
+
+//shows the detective's status
+void Detective::display() const {
+    showProfile();
+    cout << "  Credibility: " << credibility << " | Turns used: " << turns << endl;
+}
+
+//reduces credibility but never below zero
+void Detective::loseCredibility(int points) {
+    credibility -= points;
+    if (credibility < 0)
+        credibility = 0;
+}
+
+int Detective::getCredibility() const {
+    return credibility;
+}
+int Detective::getTurns() const {
+    return turns;
+}
+
+// engine calls this to count turn
+void Detective::useTurn() {
+    turns++;
+}
+
+//victim stores its own Word 2 letter data
+Victim::Victim(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Character(name, role, nat), letterClueChar(letter), boardPosChar(pos), clueRowChar(WORD_2) {
+}
+
+//victim speaks about the robbery
+void Victim::display() const {
+    showProfile();
+    cout << "  \"The locker behind the bookshelf was emptied during my party. Find the thief\"" << endl;
+}
+
+// The victim can be interviewed only if credibility >= 80
+int Victim::getMinCredibility() const {
+    return 80;
+}
+
+//letter and position of the victim
+Clue Victim::getClue() const {
+    Clue c;
+    c.clueLetter = letterClueChar;
+    c.cluePosition = boardPosChar;
+    c.clueRow = clueRowChar;
+    return c;
+}
+
+//suspect keeps the letter data of Word 2
+Suspect::Suspect(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Character(name, role, nat), letterClueChar(letter), boardPosChar(pos), clueRowChar(WORD_2) {
+}
+
+Suspect::~Suspect() {}
+
+//letter and position of this suspect
+Clue Suspect::getClue() const {
+    Clue c;
+    c.clueLetter = letterClueChar;
+    c.cluePosition = boardPosChar;
+    c.clueRow = clueRowChar;
+    return c;
+}
+
