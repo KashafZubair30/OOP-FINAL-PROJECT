@@ -62,4 +62,55 @@ string normalizeRole(const string& role);
 string getTodayDate();
 void clearScreen();
 
+//base class of game exceptions
+class GameException {
+protected:
+    string message;
+    bool wrongStep;
+public:
+    GameException(const string& msg, bool penalty = false)
+        : message("Error: " + msg), wrongStep(penalty) {
+    }
+    virtual ~GameException() {}
+    string getMessage() const {
+        return message;
+    }
+    bool isWrongStep() const {
+        return wrongStep;
+    }
+};
+
+class InvalidInputException : public GameException {
+public:
+    InvalidInputException(const string& msg) : GameException(msg, true) {}
+};
+class InvalidWordException : public GameException {
+public:
+    InvalidWordException(const string& msg) : GameException(msg, true) {}
+};
+class InvalidPositionException : public GameException {
+public:
+    InvalidPositionException(const string& msg) : GameException(msg, true) {}
+};
+class SlotFilledException : public GameException {
+public:
+    SlotFilledException(const string& msg) : GameException(msg, true) {}
+};
+class RackFullException : public GameException {
+public:
+    RackFullException(const string& msg) : GameException(msg, false) {}
+};
+class RackEmptyException : public GameException {
+public:
+    RackEmptyException(const string& msg) : GameException(msg, false) {}
+};
+class CredibilityException : public GameException {
+public:
+    CredibilityException(const string& msg) : GameException(msg, true) {}
+};
+class FileException : public GameException {
+public:
+    FileException(const string& msg) : GameException(msg, false) {}
+};
+
 #endif
