@@ -113,4 +113,71 @@ public:
     FileException(const string& msg) : GameException(msg, false) {}
 };
 
+class GameEngine;
+
+//abstract base class of everyone in the game
+class Character {
+protected:
+    string characterName;
+    string characterRole;
+    string nationality;
+    bool isCulprit;
+    bool interviewed;
+    void showProfile() const;
+public:
+    Character(const string& name = "", const string& role = "", const string& nat = "");
+    virtual ~Character();
+
+    virtual void display() const = 0;             // pure virtual: every child must override
+    virtual int getMinCredibility() const;        // credibility needed to interview
+    virtual Clue getClue() const;                 // letter + position for Word 2
+
+    string getName() const;
+    string getRole() const;
+    string getNationality() const;
+    bool getIsCulprit() const;
+    bool isInterviewed() const;
+    void setInterviewed(bool value);
+};
+
+//player
+class Detective : public Character {
+private:
+    int credibility;
+    int turns;
+public:
+    Detective(const string& name = "Detective", int startCredibility = 100);
+    void display() const;
+    void loseCredibility(int points);
+    int getCredibility() const;
+    int getTurns() const;
+    void useTurn();
+};
+
+//the victim interviewed but not a suspect
+class Victim : public Character {
+private:
+    char letterClueChar;
+    int boardPosChar;
+    WordRow clueRowChar;
+public:
+    Victim(const string& name, const string& role, const string& nat, char letter, int pos);
+    void display() const;
+    int getMinCredibility() const;
+    Clue getClue() const;
+};
+
+//abstract suspect, stores the word 2 letter data shared by all suspects
+class Suspect : public Character {
+protected:
+    char letterClueChar;
+    int boardPosChar;
+    WordRow clueRowChar;
+public:
+    Suspect(const string& name, const string& role, const string& nat, char letter, int pos);
+    virtual ~Suspect();
+    Clue getClue() const;
+    virtual string getCategory() const = 0;
+};
+
 #endif
