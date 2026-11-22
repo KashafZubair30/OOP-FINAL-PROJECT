@@ -113,6 +113,29 @@ public:
     FileException(const string& msg) : GameException(msg, false) {}
 };
 
+//stores the collected letters of one word
+class TileRack {
+private:
+    Tile* tiles;
+    int* positions;
+    int count;
+    int capacity;
+    string orderedLetters() const;
+public:
+    TileRack(int cap = 8);
+    TileRack(const TileRack& other);
+    TileRack& operator=(const TileRack& other);
+    ~TileRack();
+
+    void addTile(char letter, int position);
+    char removeTile();
+    void display() const;
+    int getCount() const;
+    bool isFull() const;
+    bool isEmpty() const;
+    //merges two racks into one clue string
+    string operator+(const TileRack& other) const;
+};
 class GameEngine;
 
 //abstract base class of everyone in the game
