@@ -119,6 +119,112 @@ void clearScreen() {
 #endif
 }
 
+//creates an empty rack that can hold cap tiles
+TileRack::TileRack(int cap) : tiles(0), positions(0), count(0), capacity(cap) {
+    tiles = new Tile[capacity];
+    positions = new int[capacity];
+    for (int i = 0; i < capacity; i++)
+        positions[i] = 0;
+}
+
+//deep copy constructor
+TileRack::TileRack(const TileRack& other) : tiles(0), positions(0), count(other.count), capacity(other.capacity) {
+    tiles = new Tile[capacity];
+    positions = new int[capacity];
+    for (int i = 0; i < capacity; i++) {
+        tiles[i] = other.tiles[i];
+        positions[i] = other.positions[i];
+    }
+}
+
+//deep copy assignment
+TileRack& TileRack::operator=(const TileRack& other) {
+    if (this != &other) {
+        delete[] tiles;
+        delete[] positions;
+        count = other.count;
+        capacity = other.capacity;
+        tiles = new Tile[capacity];
+        positions = new int[capacity];
+        for (int i = 0; i < capacity; i++) {
+            tiles[i] = other.tiles[i];
+            positions[i] = other.positions[i];
+        }
+    }
+    return *this;
+}
+
+//destructor 
+TileRack::~TileRack() {
+    delete[] tiles;
+    delete[] positions;
+}
+
+//adds a letter and its board position to the rack
+void TileRack::addTile(char letter, int position) {
+    if (count >= capacity)
+        throw RackFullException("The rack is full");
+    tiles[count].tileLetter = letter;
+    tiles[count].filled = true;
+    positions[count] = position;
+    count++;
+}
+
+//removes the most recently added letter and returns it
+char TileRack::removeTile() {
+    if (count == 0)
+        throw RackEmptyException("The rack is empty");
+    count--;
+    char letter = tiles[count].tileLetter;
+    tiles[count] = Tile();
+    positions[count] = 0;
+    return letter;
+}
+
+//shows every letter with its position
+void TileRack::display() const {
+    if (count == 0) {
+        cout << " empty ";
+        return;
+    }
+    for (int i = 0; i < count; i++)
+        cout << tiles[i].tileLetter << " - " << positions[i] << "  ";
+}
+
+//how many letters are stored
+int TileRack::getCount() const {
+    return count;
+}
+
+//true when no more tiles fit
+bool TileRack::isFull() const {
+    return count >= capacity;
+}
+
+//true when nothing is stored
+bool TileRack::isEmpty() const {
+    return count == 0;
+}
+
+//builds the letters
+string TileRack::orderedLetters() const {
+    string result = "";
+    for (int p = 1; p <= capacity; p++) {
+        char ch = '_';
+        for (int i = 0; i < count; i++) {
+            if (positions[i] == p)
+                ch = tiles[i].tileLetter;
+        }
+        result += ch;
+    }
+    return result;
+}
+
+//merges two racks into a single clue
+string TileRack::operator+(const TileRack& other) const {
+    return orderedLetters() + " " + other.orderedLetters();
+}
+
 //sets the common data of every character
 Character::Character(const string& name, const string& role, const string& nat) : characterName(name), characterRole(role), nationality(nat), isCulprit(false), interviewed(false) {
 }
