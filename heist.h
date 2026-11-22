@@ -180,4 +180,68 @@ public:
     virtual string getCategory() const = 0;
 };
 
+//virtual inheritance from suspect
+class BusinessRelations : virtual public Suspect {
+public:
+    BusinessRelations(const string& name, const string& role, const string& nat, char letter, int pos);
+    virtual ~BusinessRelations();
+    string getCategory() const;
+};
+
+class CloseRelations : virtual public Suspect {
+public:
+    CloseRelations(const string& name, const string& role, const string& nat, char letter, int pos);
+    virtual ~CloseRelations();
+    string getCategory() const;
+};
+
+class HouseHelp : public Suspect {
+public:
+    HouseHelp(const string& name, const string& role, const string& nat, char letter, int pos);
+    virtual ~HouseHelp();
+    string getCategory() const;
+};
+
+class Partner : public BusinessRelations {
+public:
+    Partner(const string& name, const string& role, const string& nat, char letter, int pos);
+    void display() const;
+    int getMinCredibility() const;
+};
+
+// PA inherits from both BusinessRelations and CloseRelations
+class PA : public BusinessRelations, public CloseRelations {
+public:
+    PA(const string& name, const string& role, const string& nat, char letter, int pos);
+    void display() const;
+    int getMinCredibility() const;
+    string getCategory() const;
+};
+
+class Cook : public HouseHelp {
+public:
+    Cook(const string& name, const string& role, const string& nat, char letter, int pos);
+    void display() const;
+};
+
+class Guard : public HouseHelp {
+public:
+    Guard(const string& name, const string& role, const string& nat, char letter, int pos);
+    void display() const;
+};
+
+class Servant : public HouseHelp {
+public:
+    Servant(const string& name, const string& role, const string& nat, char letter, int pos);
+    void display() const;
+};
+
+class OwnersChild : public CloseRelations {
+private:
+    int age;
+public:
+    OwnersChild(const string& name, const string& role, const string& nat, char letter, int pos, int childAge = 17);
+    void display() const;
+    int getMinCredibility() const;
+};
 #endif
