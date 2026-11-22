@@ -233,3 +233,89 @@ Clue Suspect::getClue() const {
     return c;
 }
 
+BusinessRelations::BusinessRelations(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos) {
+}
+BusinessRelations::~BusinessRelations() {}
+string BusinessRelations::getCategory() const { return "Business Relations"; }
+
+CloseRelations::CloseRelations(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos) {
+}
+CloseRelations::~CloseRelations() {}
+string CloseRelations::getCategory() const { return "Close Relations"; }
+
+HouseHelp::HouseHelp(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos) {
+}
+HouseHelp::~HouseHelp() {}
+string HouseHelp::getCategory() const { return "House Help"; }
+
+Partner::Partner(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos), BusinessRelations(name, role, nat, letter, pos) {
+}
+void Partner::display() const {
+    showProfile();
+    cout << "  Category: " << getCategory() << endl;
+    cout << "  \"I was discussing a deal downstairs. Ask the others.\"" << endl;
+}
+int Partner::getMinCredibility() const { return 50; }
+
+PA::PA(const string& name, const string& role, const string& nat, char letter, int pos)
+    : Suspect(name, role, nat, letter, pos),
+    BusinessRelations(name, role, nat, letter, pos),
+    CloseRelations(name, role, nat, letter, pos) {
+}
+void PA::display() const {
+    showProfile();
+    cout << "  Category: " << getCategory() << endl;
+    cout << "  \"I am the owner's right hand. I know all his secrets.\"" << endl;
+}
+int PA::getMinCredibility() const {
+    return 35;
+}
+// PA belongs to two groups, so it resolves the ambiguity itself
+string PA::getCategory() const {
+    return "Business Relations & Close Relations";
+}
+
+Cook::Cook(const string& name, const string& role, const string& nat, char letter, int pos)
+    : HouseHelp(name, role, nat, letter, pos) {
+}
+void Cook::display() const {
+    showProfile();
+    cout << "  Category: " << getCategory() << endl;
+    cout << "  \"I was in the kitchen preparing dinner all evening.\"" << endl;
+}
+
+Guard::Guard(const string& name, const string& role, const string& nat, char letter, int pos)
+    : HouseHelp(name, role, nat, letter, pos) {
+}
+void Guard::display() const {
+    showProfile();
+    cout << "  Category: " << getCategory() << endl;
+    cout << "  \"I watched the gate and the garden. Nobody passed me.\"" << endl;
+}
+
+Servant::Servant(const string& name, const string& role, const string& nat, char letter, int pos)
+    : HouseHelp(name, role, nat, letter, pos) {
+}
+void Servant::display() const {
+    showProfile();
+    cout << "  Category: " << getCategory() << endl;
+    cout << "  \"I served drinks in the living room and cleaned the bedrooms.\"" << endl;
+}
+
+OwnersChild::OwnersChild(const string& name, const string& role, const string& nat, char letter, int pos, int childAge)
+    : Suspect(name, role, nat, letter, pos), CloseRelations(name, role, nat, letter, pos), age(childAge) {
+}
+void OwnersChild::display() const {
+    showProfile();
+    cout << "  Age: " << age << " | Category: " << getCategory() << endl;
+    cout << "  \"I was so scared and I stayed in my room\"" << endl;
+}
+//child talks only if credibility >= 75
+int OwnersChild::getMinCredibility() const {
+    return 75;
+}
+
