@@ -225,6 +225,147 @@ string TileRack::operator+(const TileRack& other) const {
     return orderedLetters() + " " + other.orderedLetters();
 }
 
+//creates the board with row 1 having 7 slots, row 2 having 8 slots
+Scrabble::Scrabble() : row1(0), row2(0), targetWord1(""), targetWord2(""), solved1(false), solved2(false) {
+    row1 = new Tile[7];
+    row2 = new Tile[8];
+}
+
+//deep copy constructor
+Scrabble::Scrabble(const Scrabble& other) : row1(0), row2(0), targetWord1(other.targetWord1),
+targetWord2(other.targetWord2), solved1(other.solved1), solved2(other.solved2) {
+    row1 = new Tile[7];
+    row2 = new Tile[8];
+    for (int i = 0; i < 7; i++)
+        row1[i] = other.row1[i];
+    for (int i = 0; i < 8; i++)
+        row2[i] = other.row2[i];
+}
+
+//deep copy assignment
+Scrabble& Scrabble::operator=(const Scrabble& other) {
+    if (this != &other) {
+        for (int i = 0; i < 7; i++)
+            row1[i] = other.row1[i];
+        for (int i = 0; i < 8; i++)
+            row2[i] = other.row2[i];
+        targetWord1 = other.targetWord1;
+        targetWord2 = other.targetWord2;
+        solved1 = other.solved1;
+        solved2 = other.solved2;
+    }
+    return *this;
+}
+
+//destructor for scrabble class
+Scrabble::~Scrabble() {
+    delete[] row1;
+    delete[] row2;
+}
+
+//stores the two target words
+void Scrabble::loadWords(const string& w1, const string& w2) {
+    string a = toUpperString(trimString(w1));
+    string b = toUpperString(trimString(w2));
+    if ((int)a.length() != 7)
+        throw InvalidWordException("Word 1 must have exactly 7 letters");
+    if ((int)b.length() != 8)
+        throw InvalidWordException("Word 2 must have exactly 8 letters");
+    targetWord1 = a;
+    targetWord2 = b;
+}
+
+//places a letter on its board position after checking position, slot and letter
+void Scrabble::placeLetter(const Clue& clue) {
+    Tile* row;
+    int size;
+    string target;
+    if (clue.clueRow == WORD_1) {
+        row = row1;
+        size = 7;
+        target = targetWord1;
+    }
+    else {
+        row = row2;
+        size = 8;
+        target = targetWord2;
+    }
+    int index = clue.cluePosition - 1;
+    if (index < 0 || index >= size)
+        throw InvalidPositionException("Board position " + intToString(clue.cluePosition) + " is not valid");
+    if (row[index].filled)
+        throw SlotFilledException("Board position " + intToString(clue.cluePosition) + " is already filled");
+    // the clue must match the expected letter of the target word
+    Clue expected;
+    expected.clueLetter = target[index];
+    expected.cluePosition = clue.cluePosition;
+    expected.clueRow = clue.clueRow;
+    if (!(clue == expected))
+        throw InvalidWordException("Letter " + string(1, clue.clueLetter) + " does not belong at this position");
+    row[index].tileLetter = clue.clueLetter;
+    row[index].filled = true;
+}
+
+//true when every slot of the row has a letter
+bool Scrabble::isRowComplete(WordRow row) const {
+    const Tile* r = (row == WORD_1) ? row1 : row2;
+    int size = (row == WORD_1) ? 7 : 8;
+    for (int i = 0; i < size; i++) {
+        if (!r[i].filled)
+            return false;
+    }
+    return true;
+}
+
+//returns the letters currently on a row 
+string Scrabble::getRowWord(WordRow row) const {
+    const Tile* r = (row == WORD_1) ? row1 : row2;
+    int size = (row == WORD_1) ? 7 : 8;
+    string word = "";
+    for (int i = 0; i < size; i++) {
+        if (r[i].filled)
+            word += r[i].tileLetter;
+        else
+            word += '_';
+    }
+    return word;
+}
+
+//returns the secret target word of a row
+string Scrabble::getTargetWord(WordRow row) const {
+    return (row == WORD_1) ? targetWord1 : targetWord2;
+}
+
+//checks the typed word; marks the row solved if it is correct
+bool Scrabble::checkWord(WordRow row, const string& guess) {
+    string g = toUpperString(trimString(guess));
+    if (g == getTargetWord(row)) {
+        if (row == WORD_1)
+            solved1 = true;
+        else
+            solved2 = true;
+        return true;
+    }
+    return false;
+}
+
+//true when the given row was solved by the detective
+bool Scrabble::isSolved(WordRow row) const {
+    return (row == WORD_1) ? solved1 : solved2;
+}
+
+//true when both words are solved
+bool Scrabble::bothSolved() const {
+    return solved1 && solved2;
+}
+
+//prints the board
+void Scrabble::display() const {
+    cout << "Scrabble:" << endl;
+    cout << "  Word 1: " << getRowWord(WORD_1) << endl;
+    cout << "  Word 2: " << getRowWord(WORD_2) << endl;
+}
+
 //creates a cottage with 7 empty locations
 Cottage::Cottage() : locationList(0), locationCount(7) {
     locationList = new Location[7];
