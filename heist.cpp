@@ -225,6 +225,101 @@ string TileRack::operator+(const TileRack& other) const {
     return orderedLetters() + " " + other.orderedLetters();
 }
 
+//creates a cottage with 7 empty locations
+Cottage::Cottage() : locationList(0), locationCount(7) {
+    locationList = new Location[7];
+}
+
+//deep copy constructor
+Cottage::Cottage(const Cottage& other) : locationList(0), locationCount(other.locationCount) {
+    locationList = new Location[locationCount];
+    for (int i = 0; i < locationCount; i++)
+        locationList[i] = other.locationList[i];
+}
+
+// Deep copy assignment
+Cottage& Cottage::operator=(const Cottage& other) {
+    if (this != &other) {
+        delete[] locationList;
+        locationCount = other.locationCount;
+        locationList = new Location[locationCount];
+        for (int i = 0; i < locationCount; i++)
+            locationList[i] = other.locationList[i];
+    }
+    return *this;
+}
+
+//destructor for cottage
+Cottage::~Cottage() {
+    delete[] locationList;
+}
+
+//reads locations.txt and picks the letter column of the chosen culprit
+void Cottage::loadFromFile(const string& fileName, int culpritColumn) {
+    ifstream file(fileName.c_str());
+    if (!file)
+        throw FileException(fileName + " was not found");
+    string line;
+    getline(file, line);
+    int index = 0;
+    while (getline(file, line)) {
+        line = trimString(line);
+        if (line.length() == 0)
+            continue;
+        string f[12];
+        int n = splitLine(line, f, 12);
+        bool ok;
+        int pos = stringToInt(f[1], ok);
+        if (n != 9 || !ok || pos < 1 || pos > 7 || f[2 + culpritColumn].length() != 1 || index >= 7)
+            throw FileException(fileName + " is corrupted");
+        locationList[index].locName = f[0];
+        locationList[index].boardPosLoc = pos;
+        locationList[index].letterClueLoc = f[2 + culpritColumn][0];
+        locationList[index].locRow = WORD_1;
+        locationList[index].locSearchFlag = false;
+        index++;
+    }
+    if (index != 7)
+        throw FileException(fileName + " must contain 7 locations");
+}
+
+//number of locations in the cottage
+int Cottage::getLocationCount() const {
+    return locationCount;
+}
+
+//true if the location was searched before
+bool Cottage::isSearched(int index) const {
+    return locationList[index].locSearchFlag;
+}
+
+//name of a location
+string Cottage::getLocationName(int index) const {
+    return locationList[index].locName;
+}
+
+//builds a clue from a location 
+Clue Cottage::getClue(int index) const {
+    Clue c;
+    c.clueLetter = locationList[index].letterClueLoc;
+    c.cluePosition = locationList[index].boardPosLoc;
+    c.clueRow = locationList[index].locRow;
+    return c;
+}
+
+//marks a location as searched
+void Cottage::markSearched(int index) { locationList[index].locSearchFlag = true; }
+
+//prints the numbered list of locations
+void Cottage::displayLocations() const {
+    cout << "====== Location Menu ======" << endl;
+    for (int i = 0; i < locationCount; i++)
+        cout << "[" << (i + 1) << "] " << locationList[i].locName << " - "
+            << (locationList[i].locSearchFlag ? "Searched" : "NOT Searched") << endl;
+    cout << "[0] Back" << endl;
+    cout << "===========================" << endl;
+}
+
 //sets the common data of every character
 Character::Character(const string& name, const string& role, const string& nat) : characterName(name), characterRole(role), nationality(nat), isCulprit(false), interviewed(false) {
 }
