@@ -136,6 +136,35 @@ public:
     //merges two racks into one clue string
     string operator+(const TileRack& other) const;
 };
+//word 1 has 7 tiles and 2 has 8 tiles in scrabble
+class Scrabble {
+private:
+    Tile* row1;
+    Tile* row2;
+    string targetWord1;
+    string targetWord2;
+    bool solved1;
+    bool solved2;
+public:
+    Scrabble();
+    Scrabble(const Scrabble& other);
+    Scrabble& operator=(const Scrabble& other);
+    ~Scrabble();
+
+    void loadWords(const string& w1, const string& w2);
+    void placeLetter(const Clue& clue);
+    bool isRowComplete(WordRow row) const;
+    string getRowWord(WordRow row) const;
+    string getTargetWord(WordRow row) const;
+    bool checkWord(WordRow row, const string& guess);
+    bool isSolved(WordRow row) const;
+    bool bothSolved() const;
+    void display() const;
+
+    friend ostream& operator<<(ostream& os, const Scrabble& s);
+    friend istream& operator>>(istream& is, Scrabble& s);
+};
+
 //cottage holds the 7 searchable location
 class Cottage {
 private:
