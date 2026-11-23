@@ -136,6 +136,26 @@ public:
     //merges two racks into one clue string
     string operator+(const TileRack& other) const;
 };
+//cottage holds the 7 searchable location
+class Cottage {
+private:
+    Location* locationList;
+    int locationCount;
+public:
+    Cottage();
+    Cottage(const Cottage& other);
+    Cottage& operator=(const Cottage& other);
+    ~Cottage();
+
+    void loadFromFile(const string& fileName, int culpritColumn);
+    int getLocationCount() const;
+    bool isSearched(int index) const;
+    string getLocationName(int index) const;
+    Clue getClue(int index) const;
+    void markSearched(int index);
+    void displayLocations() const;
+};
+
 class GameEngine;
 
 //abstract base class of everyone in the game
