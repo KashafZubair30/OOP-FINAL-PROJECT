@@ -113,11 +113,68 @@ public:
     FileException(const string& msg) : GameException(msg, false) {}
 };
 
+//generic fixed size dynamic array with deep copy and bounds checking
+template <class T>
+class DynamicArray {
+private:
+    T* data;
+    int size;
+public:
+    //array of n elements created
+    DynamicArray(int n = 0) : data(0), size(0) {
+        if (n > 0) {
+            data = new T[n];
+            size = n;
+        }
+    }
+    //deep copy by copy constructor
+    DynamicArray(const DynamicArray<T>& other) : data(0), size(0) {
+        if (other.size > 0) {
+            data = new T[other.size];
+            size = other.size;
+            for (int i = 0; i < size; i++)
+                data[i] = other.data[i];
+        }
+    }
+    //free old memory then deep coopy
+    DynamicArray<T>& operator=(const DynamicArray<T>& other) {
+        if (this != &other) {
+            delete[] data;
+            data = 0;
+            size = 0;
+            if (other.size > 0) {
+                data = new T[other.size];
+                size = other.size;
+                for (int i = 0; i < size; i++)
+                    data[i] = other.data[i];
+            }
+        }
+        return *this;
+    }
+    //releases the memory
+    ~DynamicArray() {
+        delete[] data;
+    }
+
+    //safe element access
+    T& operator[](int index) {
+        if (index < 0 || index >= size)
+            throw InvalidPositionException("Array index out of range");
+        return data[index];
+    }
+    const T& operator[](int index) const {
+        if (index < 0 || index >= size)
+            throw InvalidPositionException("Array index out of range");
+        return data[index];
+    }
+    int getSize() const { return size; }
+};
+
 //stores the collected letters of one word
 class TileRack {
 private:
-    Tile* tiles;
-    int* positions;
+    DynamicArray<Tile> tiles;
+    DynamicArray<int> positions;
     int count;
     int capacity;
     string orderedLetters() const;
@@ -139,8 +196,8 @@ public:
 //word 1 has 7 tiles and 2 has 8 tiles in scrabble
 class Scrabble {
 private:
-    Tile* row1;
-    Tile* row2;
+    DynamicArray<Tile> row1;
+    DynamicArray<Tile> row2;
     string targetWord1;
     string targetWord2;
     bool solved1;
@@ -160,15 +217,12 @@ public:
     bool isSolved(WordRow row) const;
     bool bothSolved() const;
     void display() const;
-
-    friend ostream& operator<<(ostream& os, const Scrabble& s);
-    friend istream& operator>>(istream& is, Scrabble& s);
 };
 
 //cottage holds the 7 searchable location
 class Cottage {
 private:
-    Location* locationList;
+    DynamicArray<Location> locationList;
     int locationCount;
 public:
     Cottage();
