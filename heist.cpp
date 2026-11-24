@@ -120,44 +120,35 @@ void clearScreen() {
 }
 
 //creates an empty rack that can hold cap tiles
-TileRack::TileRack(int cap) : tiles(0), positions(0), count(0), capacity(cap) {
-    tiles = new Tile[capacity];
-    positions = new int[capacity];
-    for (int i = 0; i < capacity; i++)
-        positions[i] = 0;
+TileRack::TileRack(int cap) : tiles(cap), positions(cap), count(0), capacity(cap) {
+    // earlier raw dma logic, replaced by DynamicArray<T> (module 8):
+    // tiles = new Tile[capacity];
+    // positions = new int[capacity];
 }
 
 //deep copy constructor
-TileRack::TileRack(const TileRack& other) : tiles(0), positions(0), count(other.count), capacity(other.capacity) {
-    tiles = new Tile[capacity];
-    positions = new int[capacity];
-    for (int i = 0; i < capacity; i++) {
-        tiles[i] = other.tiles[i];
-        positions[i] = other.positions[i];
-    }
+TileRack::TileRack(const TileRack& other) : tiles(other.tiles), positions(other.positions), count(other.count), capacity(other.capacity) {
+    // earlier raw dma logic:
+    // tiles = new Tile[capacity];
+    // for (int i = 0; i < capacity; i++) tiles[i] = other.tiles[i];
 }
 
 //deep copy assignment
 TileRack& TileRack::operator=(const TileRack& other) {
     if (this != &other) {
-        delete[] tiles;
-        delete[] positions;
+        tiles = other.tiles;
+        positions = other.positions;
         count = other.count;
         capacity = other.capacity;
-        tiles = new Tile[capacity];
-        positions = new int[capacity];
-        for (int i = 0; i < capacity; i++) {
-            tiles[i] = other.tiles[i];
-            positions[i] = other.positions[i];
-        }
     }
     return *this;
 }
 
 //destructor 
 TileRack::~TileRack() {
-    delete[] tiles;
-    delete[] positions;
+    // earlier raw dma logic:
+    // delete[] tiles;
+    // delete[] positions;
 }
 
 //adds a letter and its board position to the rack
@@ -226,29 +217,22 @@ string TileRack::operator+(const TileRack& other) const {
 }
 
 //creates the board with row 1 having 7 slots, row 2 having 8 slots
-Scrabble::Scrabble() : row1(0), row2(0), targetWord1(""), targetWord2(""), solved1(false), solved2(false) {
-    row1 = new Tile[7];
-    row2 = new Tile[8];
+Scrabble::Scrabble() : row1(7), row2(8), targetWord1(""), targetWord2(""), solved1(false), solved2(false) {
+    // earlier raw dma logic (jagged rows):
+    // Tile* row1 = new Tile[7];
+    // Tile* row2 = new Tile[8];
 }
 
 //deep copy constructor
-Scrabble::Scrabble(const Scrabble& other) : row1(0), row2(0), targetWord1(other.targetWord1),
+Scrabble::Scrabble(const Scrabble& other) : row1(other.row1), row2(other.row2), targetWord1(other.targetWord1),
 targetWord2(other.targetWord2), solved1(other.solved1), solved2(other.solved2) {
-    row1 = new Tile[7];
-    row2 = new Tile[8];
-    for (int i = 0; i < 7; i++)
-        row1[i] = other.row1[i];
-    for (int i = 0; i < 8; i++)
-        row2[i] = other.row2[i];
 }
 
 //deep copy assignment
 Scrabble& Scrabble::operator=(const Scrabble& other) {
     if (this != &other) {
-        for (int i = 0; i < 7; i++)
-            row1[i] = other.row1[i];
-        for (int i = 0; i < 8; i++)
-            row2[i] = other.row2[i];
+        row1 = other.row1;
+        row2 = other.row2;
         targetWord1 = other.targetWord1;
         targetWord2 = other.targetWord2;
         solved1 = other.solved1;
@@ -259,17 +243,18 @@ Scrabble& Scrabble::operator=(const Scrabble& other) {
 
 //destructor for scrabble class
 Scrabble::~Scrabble() {
-    delete[] row1;
-    delete[] row2;
+    // earlier raw dma logic:
+    // delete[] row1;
+    // delete[] row2;
 }
 
 //stores the two target words
 void Scrabble::loadWords(const string& w1, const string& w2) {
     string a = toUpperString(trimString(w1));
     string b = toUpperString(trimString(w2));
-    if ((int)a.length() != 7)
+    if ((int)a.length() != row1.getSize())
         throw InvalidWordException("Word 1 must have exactly 7 letters");
-    if ((int)b.length() != 8)
+    if ((int)b.length() != row2.getSize())
         throw InvalidWordException("Word 2 must have exactly 8 letters");
     targetWord1 = a;
     targetWord2 = b;
@@ -277,23 +262,21 @@ void Scrabble::loadWords(const string& w1, const string& w2) {
 
 //places a letter on its board position after checking position, slot and letter
 void Scrabble::placeLetter(const Clue& clue) {
-    Tile* row;
-    int size;
+    // pick the row and its target word with a plain if/else
+    DynamicArray<Tile>* row;
     string target;
     if (clue.clueRow == WORD_1) {
-        row = row1;
-        size = 7;
+        row = &row1;
         target = targetWord1;
     }
     else {
-        row = row2;
-        size = 8;
+        row = &row2;
         target = targetWord2;
     }
     int index = clue.cluePosition - 1;
-    if (index < 0 || index >= size)
+    if (index < 0 || index >= row->getSize())
         throw InvalidPositionException("Board position " + intToString(clue.cluePosition) + " is not valid");
-    if (row[index].filled)
+    if ((*row)[index].filled)
         throw SlotFilledException("Board position " + intToString(clue.cluePosition) + " is already filled");
     // the clue must match the expected letter of the target word
     Clue expected;
@@ -302,16 +285,19 @@ void Scrabble::placeLetter(const Clue& clue) {
     expected.clueRow = clue.clueRow;
     if (!(clue == expected))
         throw InvalidWordException("Letter " + string(1, clue.clueLetter) + " does not belong at this position");
-    row[index].tileLetter = clue.clueLetter;
-    row[index].filled = true;
+    (*row)[index].tileLetter = clue.clueLetter;
+    (*row)[index].filled = true;
 }
 
 //true when every slot of the row has a letter
 bool Scrabble::isRowComplete(WordRow row) const {
-    const Tile* r = (row == WORD_1) ? row1 : row2;
-    int size = (row == WORD_1) ? 7 : 8;
-    for (int i = 0; i < size; i++) {
-        if (!r[i].filled)
+    const DynamicArray<Tile>* r;
+    if (row == WORD_1)
+        r = &row1;
+    else
+        r = &row2;
+    for (int i = 0; i < r->getSize(); i++) {
+        if (!(*r)[i].filled)
             return false;
     }
     return true;
@@ -319,12 +305,15 @@ bool Scrabble::isRowComplete(WordRow row) const {
 
 //returns the letters currently on a row 
 string Scrabble::getRowWord(WordRow row) const {
-    const Tile* r = (row == WORD_1) ? row1 : row2;
-    int size = (row == WORD_1) ? 7 : 8;
+    const DynamicArray<Tile>* r;
+    if (row == WORD_1)
+        r = &row1;
+    else
+        r = &row2;
     string word = "";
-    for (int i = 0; i < size; i++) {
-        if (r[i].filled)
-            word += r[i].tileLetter;
+    for (int i = 0; i < r->getSize(); i++) {
+        if ((*r)[i].filled)
+            word += (*r)[i].tileLetter;
         else
             word += '_';
     }
@@ -367,32 +356,28 @@ void Scrabble::display() const {
 }
 
 //creates a cottage with 7 empty locations
-Cottage::Cottage() : locationList(0), locationCount(7) {
-    locationList = new Location[7];
+Cottage::Cottage() : locationList(7), locationCount(7) {
+    // earlier raw dma logic:
+    // Location* locationList = new Location[7];
 }
 
 //deep copy constructor
-Cottage::Cottage(const Cottage& other) : locationList(0), locationCount(other.locationCount) {
-    locationList = new Location[locationCount];
-    for (int i = 0; i < locationCount; i++)
-        locationList[i] = other.locationList[i];
+Cottage::Cottage(const Cottage& other) : locationList(other.locationList), locationCount(other.locationCount) {
 }
 
 // Deep copy assignment
 Cottage& Cottage::operator=(const Cottage& other) {
     if (this != &other) {
-        delete[] locationList;
+        locationList = other.locationList;
         locationCount = other.locationCount;
-        locationList = new Location[locationCount];
-        for (int i = 0; i < locationCount; i++)
-            locationList[i] = other.locationList[i];
     }
     return *this;
 }
 
 //destructor for cottage
 Cottage::~Cottage() {
-    delete[] locationList;
+    // earlier raw dma logic:
+    // delete[] locationList;
 }
 
 //reads locations.txt and picks the letter column of the chosen culprit
