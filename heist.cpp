@@ -119,6 +119,31 @@ void clearScreen() {
 #endif
 }
 
+//prints a tile as [A] or [ ]
+ostream& operator<<(ostream& os, const Tile& t) {
+    os << "[" << (t.filled ? t.tileLetter : ' ') << "]";
+    return os;
+}
+
+//reads a tile letter from the stream
+istream& operator>>(istream& is, Tile& t) {
+    is >> t.tileLetter;
+    t.filled = true;
+    return is;
+}
+
+//prints a location with its search status
+ostream& operator<<(ostream& os, const Location& loc) {
+    os << loc.locName << " - " << (loc.locSearchFlag ? "Searched" : "NOT Searched");
+    return os;
+}
+
+//reads location name, letter and board position
+istream& operator>>(istream& is, Location& loc) {
+    is >> loc.locName >> loc.letterClueLoc >> loc.boardPosLoc;
+    return is;
+}
+
 //creates an empty rack that can hold cap tiles
 TileRack::TileRack(int cap) : tiles(cap), positions(cap), count(0), capacity(cap) {
     // earlier raw dma logic, replaced by DynamicArray<T> (module 8):
@@ -350,9 +375,36 @@ bool Scrabble::bothSolved() const {
 
 //prints the board
 void Scrabble::display() const {
-    cout << "Scrabble:" << endl;
-    cout << "  Word 1: " << getRowWord(WORD_1) << endl;
-    cout << "  Word 2: " << getRowWord(WORD_2) << endl;
+    cout << *this;
+}
+
+//prints both rows with their status
+ostream& operator<<(ostream& os, const Scrabble& s) {
+    os << "Scrabble:" << endl;
+    os << "  Word 1: ";
+    for (int i = 0; i < s.row1.getSize(); i++)
+        os << s.row1[i] << " ";
+    if (s.solved1)
+        os << " -> SOLVED (" << s.targetWord1 << ")";
+    else if (s.isRowComplete(WORD_1))
+        os << " -> COMPLETE";
+    os << endl << "  Word 2: ";
+    for (int i = 0; i < s.row2.getSize(); i++)
+        os << s.row2[i] << " ";
+    if (s.solved2)
+        os << " -> SOLVED (" << s.targetWord2 << ")";
+    else if (s.isRowComplete(WORD_2))
+        os << " -> COMPLETE";
+    os << endl;
+    return os;
+}
+
+//reads both target words 
+istream& operator>>(istream& is, Scrabble& s) {
+    string a, b;
+    is >> a >> b;
+    s.loadWords(a, b);
+    return is;
 }
 
 //creates a cottage with 7 empty locations
@@ -440,8 +492,7 @@ void Cottage::markSearched(int index) { locationList[index].locSearchFlag = true
 void Cottage::displayLocations() const {
     cout << "====== Location Menu ======" << endl;
     for (int i = 0; i < locationCount; i++)
-        cout << "[" << (i + 1) << "] " << locationList[i].locName << " - "
-            << (locationList[i].locSearchFlag ? "Searched" : "NOT Searched") << endl;
+        cout << "[" << (i + 1) << "] " << locationList[i] << endl;
     cout << "[0] Back" << endl;
     cout << "===========================" << endl;
 }
@@ -487,6 +538,18 @@ void Character::setInterviewed(bool value) {
 void Character::showProfile() const {
     cout << "  Name: " << characterName << " | Role: " << characterRole
         << " | Nationality: " << nationality << endl;
+}
+
+//short description of a character
+ostream& operator<<(ostream& os, const Character& c) {
+    os << c.characterName << " (" << c.characterRole << ")";
+    return os;
+}
+
+//reads name, role and nationality
+istream& operator>>(istream& is, Character& c) {
+    is >> c.characterName >> c.characterRole >> c.nationality;
+    return is;
 }
 
 //creates the player with starting credibility and zero turns
@@ -645,4 +708,50 @@ void OwnersChild::display() const {
 int OwnersChild::getMinCredibility() const {
     return 75;
 }
+
+//stores the score file name
+LeaderBoard::LeaderBoard(const string& file) : fileName(file) {}
+
+void LeaderBoard::addScore(const string& detective, const string& result, int credibility,
+    int turnsLeft, const string& culprit) {
+    ifstream check(fileName.c_str());
+    bool exists = check.is_open();       // does the file already exist?
+    check.close();
+    ofstream out(fileName.c_str(), ios::app);
+    if (!out)
+        throw FileException("Could not write to " + fileName);
+    if (!exists)
+        out << "Detective|Result|Credibility|Turns_Left|Culprit|Date" << endl;
+    out << detective << "|" << result << "|" << credibility << "|"
+        << (turnsLeft < 10 ? "0" : "") << turnsLeft << "|" << culprit << "|" << getTodayDate() << endl;
+}
+
+//reads the file and prints all previous scores
+void LeaderBoard::displayScores() const {
+    ifstream file(fileName.c_str());
+    if (!file)
+        throw FileException(fileName + " was not found");
+    string line;
+    string header[6];
+    if (!getline(file, line) || splitLine(line, header, 6) != 6)
+        throw FileException(fileName + " is corrupted");
+    cout << "=========== LEADER / SCORE BOARD ===========" << endl;
+    cout << "Detective | Result | Credibility | Turns Left | Culprit | Date" << endl;
+    cout << "--------------------------------------------" << endl;
+    int rows = 0;
+    while (getline(file, line)) {
+        line = trimString(line);
+        if (line.length() == 0)
+            continue;
+        string f[6];
+        if (splitLine(line, f, 6) != 6)
+            throw FileException(fileName + " is corrupted");
+        cout << f[0] << " | " << f[1] << " | " << f[2] << " | " << f[3] << " | " << f[4] << " | " << f[5] << endl;
+        rows++;
+    }
+    if (rows == 0)
+        cout << "No games played yet." << endl;
+    cout << "============================================" << endl;
+}
+
 
