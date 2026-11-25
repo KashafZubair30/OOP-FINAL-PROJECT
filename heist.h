@@ -52,6 +52,12 @@ struct Location {
     Location() : locName(""), letterClueLoc(' '), boardPosLoc(0), locRow(WORD_1), locSearchFlag(false) {}
 };
 
+//operators for the structs
+ostream& operator<<(ostream& os, const Tile& t);
+istream& operator>>(istream& is, Tile& t);
+ostream& operator<<(ostream& os, const Location& loc);
+istream& operator>>(istream& is, Location& loc);
+
 //all helper functions
 string trimString(const string& s);
 string toUpperString(const string& s);
@@ -217,6 +223,9 @@ public:
     bool isSolved(WordRow row) const;
     bool bothSolved() const;
     void display() const;
+
+    friend ostream& operator<<(ostream& os, const Scrabble& s);
+    friend istream& operator>>(istream& is, Scrabble& s);
 };
 
 //cottage holds the 7 searchable location
@@ -264,6 +273,10 @@ public:
     bool getIsCulprit() const;
     bool isInterviewed() const;
     void setInterviewed(bool value);
+
+    friend class GameEngine;                      // engine may touch protected data
+    friend ostream& operator<<(ostream& os, const Character& c);
+    friend istream& operator>>(istream& is, Character& c);
 };
 
 //player
@@ -370,4 +383,15 @@ public:
     void display() const;
     int getMinCredibility() const;
 };
+//reads and adds result in text file
+class LeaderBoard {
+private:
+    string fileName;
+public:
+    LeaderBoard(const string& file = "leader/scoreBoard.txt");
+    void addScore(const string& detective, const string& result, int credibility,
+        int turnsLeft, const string& culprit);
+    void displayScores() const;
+};
+
 #endif
