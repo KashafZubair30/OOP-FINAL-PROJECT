@@ -755,3 +755,645 @@ void LeaderBoard::displayScores() const {
 }
 
 
+GameEngine* GameEngine::instance = 0;
+
+//sets default rules and empty pointers
+GameEngine::GameEngine()
+    : state(STATE_MENU), maxTurns(25), startCredibility(100), wrongTurnPenalty(5), wrongWordPenalty(10),
+    winCondition("Accuse_Correct_Culprit"), loseCondition("Credibility_Zero_Or_Turns_Exhausted"),
+    detective(0), cottage(0), scrabble(0), rackWord1(0), rackWord2(0), leaderBoard(0),
+    culpritColumn(0), culpritRole("") {
+    for (int i = 0; i < TOTAL_PEOPLE; i++)
+        characters[i] = 0;
+}
+
+GameEngine::~GameEngine() {
+    resetGame();
+}
+
+GameEngine* GameEngine::getInstance() {
+    if (instance == 0)
+        instance = new GameEngine();
+    return instance;
+}
+
+//deletes the singleton object
+void GameEngine::destroyInstance() {
+    delete instance;
+    instance = 0;
+}
+
+//connects the leader board
+void GameEngine::setLeaderBoard(LeaderBoard* board) {
+    leaderBoard = board;
+}
+
+GameState GameEngine::getState() const {
+    return state;
+}
+
+void GameEngine::resetGame() {
+    delete detective;  detective = 0;
+    delete cottage;    cottage = 0;
+    delete scrabble;   scrabble = 0;
+    delete rackWord1;  rackWord1 = 0;
+    delete rackWord2;  rackWord2 = 0;
+    for (int i = 0; i < TOTAL_PEOPLE; i++) {
+        delete characters[i];      // virtual destructor deletes the right type
+        characters[i] = 0;
+    }
+}
+
+string GameEngine::readLine() {
+    string line;
+    if (!getline(cin, line)) {
+        cin.clear();
+        state = STATE_EXIT;
+        throw InvalidInputException("Input stream closed");
+    }
+    return line;
+}
+
+//reads a whole number between minValue and maxValue
+int GameEngine::readNumber(const string& prompt, int minValue, int maxValue) {
+    cout << prompt;
+    string line = readLine();
+    bool ok;
+    int value = stringToInt(line, ok);
+    if (!ok)
+        throw InvalidInputException("Please enter a number");
+    if (value < minValue || value > maxValue)
+        throw InvalidInputException("Choice must be between " + intToString(minValue) + " and " + intToString(maxValue));
+    return value;
+}
+
+bool GameEngine::readYesNo(const string& prompt) {
+    cout << prompt;
+    string answer = toUpperString(trimString(readLine()));
+    if (answer == "Y" || answer == "YES")
+        return true;
+    if (answer == "N" || answer == "NO")
+        return false;
+    throw InvalidInputException("Please answer Y or N");
+}
+
+void GameEngine::pauseScreen() {
+    cout << endl << "Press Enter to continue";
+    string dummy;
+    getline(cin, dummy);
+    if (!cin)
+        cin.clear();
+}
+
+//asks for name
+string GameEngine::askDetectiveName() {
+    while (true) {
+        cout << "Enter detective name: ";
+        string name = trimString(readLine());
+        if (name.length() == 0) {
+            cout << "Name cannot be empty" << endl;
+        }
+        else if (name.find(' ') != string::npos) {
+            cout << "Spaces are not allowed, use . or _ " << endl;
+        }
+        else {
+            return name;
+        }
+    }
+}
+
+//loads rules.txt; 
+bool GameEngine::loadRules() {
+    int mt = 25, sc = 100, wt = 5, ww = 10;
+    string win = "Accuse_Correct_Culprit", lose = "Credibility_Zero_Or_Turns_Exhausted";
+    bool good = true;
+    int found = 0;
+    ifstream file("rules.txt");
+    if (!file)
+        good = false;
+    string line;
+    while (good && getline(file, line)) {
+        line = trimString(line);
+        if (line.length() == 0)
+            continue;
+        int eq = (int)line.find('=');
+        if (eq == (int)string::npos) {
+            good = false;
+            break;
+        }
+        string key = trimString(line.substr(0, eq));
+        string val = trimString(line.substr(eq + 1));
+        bool ok = true;
+        int number = 0;
+        if (key == "Max_Turns") {
+            number = stringToInt(val, ok);
+            mt = number; found++;
+        }
+        else if (key == "Starting_Credibility") {
+            number = stringToInt(val, ok);
+            sc = number; found++;
+        }
+        else if (key == "Every_Wrong_Turn") {
+            number = stringToInt(val, ok);
+            wt = number < 0 ? -number : number;
+            found++;
+        }
+        else if (key == "Every_Wrong_Word") {
+            number = stringToInt(val, ok);
+            ww = number < 0 ? -number : number;
+            found++;
+        }
+        else if (key == "Win_Condition") {
+            win = val;
+            found++;
+        }
+        else if (key == "Lose_Condition") {
+            lose = val;
+            found++;
+        }
+        else ok = false;
+        if (!ok)
+            good = false;
+    }
+    if (good && (found != 6 || mt <= 0 || sc <= 0))
+        good = false;
+    if (good) {
+        maxTurns = mt;
+        startCredibility = sc;
+        wrongTurnPenalty = wt;
+        wrongWordPenalty = ww;
+        winCondition = win;
+        loseCondition = lose;
+    }
+    else {
+        maxTurns = 25;
+        startCredibility = 100;
+        wrongTurnPenalty = 5;
+        wrongWordPenalty = 10;
+        winCondition = "Accuse_Correct_Culprit";
+        loseCondition = "Credibility_Zero_Or_Turns_Exhausted";
+    }
+    return good;
+}
+
+//creates the right Character object 
+Character* GameEngine::createCharacter(const string& name, const string& role, const string& nat,
+    char letter, int pos) {
+    string r = normalizeRole(role);
+    if (r == "VICTIM")
+        return new Victim(name, role, nat, letter, pos);
+    if (r == "COOK")
+        return new Cook(name, role, nat, letter, pos);
+    if (r == "GUARD")
+        return new Guard(name, role, nat, letter, pos);
+    if (r == "SERVANT")
+        return new Servant(name, role, nat, letter, pos);
+    if (r == "CHILD")
+        return new OwnersChild(name, role, nat, letter, pos);
+    if (r == "PARTNER_1" || r == "PARTNER_2")
+        return new Partner(name, role, nat, letter, pos);
+    if (r == "PA")
+        return new PA(name, role, nat, letter, pos);
+    throw FileException("Unknown role '" + role + "' in characters.txt");
+}
+
+//reads characters.txt and marks chosen culprit 
+void GameEngine::loadCharacters(const string& fileName) {
+    ifstream file(fileName.c_str());
+    if (!file)
+        throw FileException(fileName + " was not found");
+    string line;
+    getline(file, line);
+    int index = 0;
+    while (getline(file, line)) {
+        line = trimString(line);
+        if (line.length() == 0)
+            continue;
+        string f[14];
+        int n = splitLine(line, f, 14);
+        bool ok;
+        int pos = stringToInt(f[3], ok);
+        if (n != 12 || !ok || pos < 1 || pos > 8 || f[4 + culpritColumn].length() != 1 || index >= TOTAL_PEOPLE)
+            throw FileException(fileName + " is corrupted");
+        characters[index] = createCharacter(f[0], f[1], f[2], f[4 + culpritColumn][0], pos);
+        index++;
+    }
+    if (index != TOTAL_PEOPLE)
+        throw FileException(fileName + " must contain 8 people");
+    if (normalizeRole(characters[0]->getRole()) != "VICTIM")
+        throw FileException("First line of " + fileName + " must be the Victim");
+    bool found = false;
+    for (int i = 1; i < TOTAL_PEOPLE; i++) {
+        if (normalizeRole(characters[i]->getRole()) == culpritRole) {
+            characters[i]->isCulprit = true;
+            found = true;
+        }
+    }
+    if (!found)
+        throw FileException("Culprit role " + culpritRole + " not found in " + fileName);
+}
+
+//reads clue.txt and loads the two words of the chosen culprit
+void GameEngine::loadClueWords(const string& fileName) {
+    ifstream file(fileName.c_str());
+    if (!file)
+        throw FileException(fileName + " was not found");
+    string line;
+    getline(file, line);
+    int lines = 0;
+    bool found = false;
+    while (getline(file, line)) {
+        line = trimString(line);
+        if (line.length() == 0)
+            continue;
+        string f[5];
+        if (splitLine(line, f, 5) != 3)
+            throw FileException(fileName + " is corrupted");
+        lines++;
+        if (normalizeRole(f[0]) == culpritRole) {
+            scrabble->loadWords(f[1], f[2]);
+            found = true;
+        }
+    }
+    if (!found || lines != 7)
+        throw FileException(fileName + " is corrupted or missing the culprit role");
+}
+
+//finds which role owns two solved words
+string GameEngine::findCulpritRole(const string& w1, const string& w2) const {
+    ifstream file("clue.txt");
+    if (!file)
+        throw FileException("clue.txt was not found");
+    string line;
+    getline(file, line);
+    while (getline(file, line)) {
+        string f[5];
+        if (splitLine(line, f, 5) == 3 && toUpperString(f[1]) == toUpperString(w1) &&
+            toUpperString(f[2]) == toUpperString(w2))
+            return f[0];
+    }
+    throw FileException("No culprit matches these words in clue.txt");
+}
+
+//prints the game title
+void GameEngine::showTitle() const {
+    cout << "+====================================================+" << endl;
+    cout << "|                                                    |" << endl;
+    cout << "|                  THE LOCKER HEIST                  |" << endl;
+    cout << "|                                                    |" << endl;
+    cout << "+====================================================+" << endl;
+    cout << "A locker hidden behind a bookshelf was robbed during a party" << endl;
+    cout << "at a wealthy owner's cottage. One of the guests is the culprit." << endl;
+    cout << "You are the detective hired to find out who did it." << endl << endl;
+}
+
+//prints the main menu
+void GameEngine::showMainMenu() const {
+    cout << endl;
+    cout << "+----------- THE LOCKER HEIST - MAIN MENU -----------+" << endl;
+    cout << "  [1] New Game" << endl;
+    cout << "  [2] View Leader/Score Board" << endl;
+    cout << "  [3] About" << endl;
+    cout << "  [4] Rules" << endl;
+    cout << "  [5] Exit" << endl;
+    cout << "+----------------------------------------------------+" << endl;
+}
+
+//prints the in game menu with the current turn number
+void GameEngine::showGameMenu() const {
+    cout << endl << "==== Game Menu ====" << endl;
+    cout << "[1] Visit a Location" << endl;
+    cout << "[2] Interview a Person" << endl;
+    cout << "[3] View Scrabble Board (free - no turn)" << endl;
+    cout << "[4] Form a Word" << endl;
+    cout << "[5] Accuse a Suspect" << endl;
+    cout << "[6] Quit" << endl;
+    cout << endl << "--- TURN " << (detective->getTurns() + 1) << " ---" << endl;
+}
+
+//prints credibility, turns and the racks
+void GameEngine::showStatus() const {
+    cout << endl << "Credibility: " << detective->getCredibility()
+        << " | Turns used: " << detective->getTurns() << "/" << maxTurns << endl;
+    cout << "Rack (Word 1): ";
+    rackWord1->display();
+    cout << endl << "Rack (Word 2): ";
+    rackWord2->display();
+    cout << endl;
+}
+
+//shows about.txt
+void GameEngine::showAbout() {
+    ifstream file("about.txt");
+    if (!file)
+        throw FileException("about.txt was not found");
+    string line;
+    cout << endl;
+    while (getline(file, line))
+        cout << line << endl;
+    pauseScreen();
+}
+
+//shows the rules
+void GameEngine::showRules() {
+    bool fromFile = loadRules();
+    cout << endl << "=============== RULES ===============" << endl;
+    if (!fromFile)
+        cout << "Rules.txt missing or corrupt so default rules shown" << endl;
+    cout << "Maximum turns        : " << maxTurns << endl;
+    cout << "Starting credibility : " << startCredibility << endl;
+    cout << "Every wrong turn     : -" << wrongTurnPenalty << endl;
+    cout << "Every wrong word     : -" << wrongWordPenalty << endl;
+    cout << "Win condition        : " << winCondition << endl;
+    cout << "Lose condition       : " << loseCondition << endl;
+    cout << "Viewing the board does not use a turn." << endl;
+    cout << "=====================================" << endl;
+    pauseScreen();
+}
+
+//prepares a fresh game
+void GameEngine::startNewGame() {
+    resetGame();
+    clearScreen();
+    cout << "+----------- THE LOCKER HEIST - NEW GAME -----------+" << endl;
+    bool rulesOk = loadRules();
+    if (!rulesOk)
+        cout << "rules.txt is missing or corrupt, default rules are used." << endl;
+    string name = askDetectiveName();
+
+    culpritColumn = rand() % TOTAL_SUSPECTS;
+    string columnRoles[TOTAL_SUSPECTS] = { "COOK", "GUARD", "SERVANT", "PARTNER_1", "PARTNER_2", "PA", "CHILD" };
+    culpritRole = columnRoles[culpritColumn];
+
+    detective = new Detective(name, startCredibility);
+    cottage = new Cottage();
+    scrabble = new Scrabble();
+    rackWord1 = new TileRack(7);
+    rackWord2 = new TileRack(8);
+    cottage->loadFromFile("locations.txt", culpritColumn);
+    loadCharacters("characters.txt");
+    loadClueWords("clue.txt");
+
+    state = STATE_PLAYING;
+    cout << "A culprit has been secretly chosen. The game begins" << endl;
+    cout << "You have " << maxTurns << " turns and " << startCredibility << " credibility." << endl;
+    cout << "Wrong step: -" << wrongTurnPenalty << " credibility, wrong word: -" << wrongWordPenalty << "." << endl;
+    cout << *scrabble;
+}
+
+//one step of the main menu
+void GameEngine::mainMenuStep() {
+    showMainMenu();
+    int choice = readNumber("Choice: ", 1, 5);
+    switch (choice) {
+    case MENU_NEW_GAME:
+        startNewGame();
+        break;
+    case MENU_LEADERBOARD:
+        if (leaderBoard == 0)
+            throw GameException("Leader board is not connected");
+        leaderBoard->displayScores();
+        pauseScreen();
+        break;
+    case MENU_ABOUT:
+        showAbout();
+        break;
+    case MENU_RULES:
+        showRules();
+        break;
+    case MENU_EXIT:
+        cout << "Goodbye, Detective" << endl;
+        state = STATE_EXIT;
+        break;
+    }
+}
+
+//runs one step of whatever state the game is in
+void GameEngine::runStep() {
+    if (state == STATE_MENU)
+        mainMenuStep();
+    else if (state == STATE_PLAYING)
+        playTurn();
+    else if (state == STATE_WON || state == STATE_LOST)
+        finishGame();
+}
+
+//one turn of the game
+void GameEngine::playTurn() {
+    showStatus();
+    showGameMenu();
+    int choice = readNumber("Choice: ", 1, 6);
+    bool turnUsed = false;
+    switch (choice) {
+    case 1:
+        turnUsed = visitLocation();
+        break;
+    case 2:
+        turnUsed = interviewPerson();
+        break;
+    case 3:
+        cout << endl << *scrabble;
+        break;
+    case 4:
+        turnUsed = formWord();
+        break;
+    case 5:
+        turnUsed = accuseSuspect();
+        break;
+    case 6:
+        turnUsed = quitGame();
+        break;
+    }
+    if (turnUsed)
+        detective->useTurn();
+    if (state == STATE_PLAYING)
+        checkEndConditions();
+}
+
+//visit a location: first visit collects the letter, repeat visit asks first
+bool GameEngine::visitLocation() {
+    cottage->displayLocations();
+    int pick = readNumber("Pick: ", 0, cottage->getLocationCount());
+    if (pick == 0)
+        return false;
+    int idx = pick - 1;
+    string name = cottage->getLocationName(idx);
+    Clue clue = cottage->getClue(idx);
+    if (cottage->isSearched(idx)) {
+        if (!readYesNo("You have already searched " + name + ". Search again? (Y/N): "))
+            return false;
+        cout << "Letter " << clue.clueLetter << " is at position " << clue.cluePosition << " of Word 1." << endl;
+        return true;
+    }
+    if (!readYesNo("You have NOT searched " + name + " yet. Search? (Y/N): "))
+        return false;
+    rackWord1->addTile(clue.clueLetter, clue.cluePosition);
+    scrabble->placeLetter(clue);
+    cottage->markSearched(idx);
+    cout << "Letter " << clue.clueLetter << " collected at position " << clue.cluePosition << " of Word 1." << endl;
+    cout << "Letter has been placed." << endl;
+    return true;
+}
+
+//interview a person: credibility rules are handled polymorphically
+bool GameEngine::interviewPerson() {
+    cout << endl << "====== Character Menu ======" << endl;
+    for (int i = 0; i < TOTAL_PEOPLE; i++)
+        cout << "[" << (i + 1) << "] " << *characters[i] << " - "
+        << (characters[i]->isInterviewed() ? "Interviewed" : "NOT Interviewed") << endl;
+    cout << "[0] Back" << endl << "===========================" << endl;
+    int pick = readNumber("Pick: ", 0, TOTAL_PEOPLE);
+    if (pick == 0)
+        return false;
+    Character* person = characters[pick - 1];
+    Clue clue = person->getClue();
+    if (person->isInterviewed()) {
+        if (!readYesNo("You have already interviewed " + person->getName() + ". Interview again? (Y/N): "))
+            return false;
+        cout << "Letter " << clue.clueLetter << " is at position " << clue.cluePosition << " of Word 2." << endl;
+        return true;
+    }
+    if (!readYesNo("You have NOT interviewed " + person->getName() + " yet. Interview? (Y/N): "))
+        return false;
+    if (detective->getCredibility() < person->getMinCredibility())
+        throw CredibilityException(person->getName() + " refuses to talk. Credibility " +
+            intToString(person->getMinCredibility()) + " is required");
+    rackWord2->addTile(clue.clueLetter, clue.cluePosition);
+    scrabble->placeLetter(clue);
+    person->setInterviewed(true);
+    person->display();                                  // polymorphic call
+    cout << "Letter " << clue.clueLetter << " collected at position " << clue.cluePosition << " of Word 2." << endl;
+    cout << "Placed." << endl;
+    return true;
+}
+
+//type a completed word; wrong words cost credibility
+bool GameEngine::formWord() {
+    cout << "[1] Word 1   [2] Word 2   [0] Back" << endl;
+    int pick = readNumber("Which word? ", 0, 2);
+    if (pick == 0)
+        return false;
+    WordRow row = (pick == 1) ? WORD_1 : WORD_2;
+    if (scrabble->isSolved(row)) {
+        cout << "That word is already solved." << endl;
+        return false;
+    }
+    if (!scrabble->isRowComplete(row))
+        throw InvalidWordException("That row is not completely filled yet");
+    cout << "Row: " << scrabble->getRowWord(row) << endl;
+    while (detective->getCredibility() > 0) {
+        cout << "Type the word: ";
+        string guess = readLine();
+        if (scrabble->checkWord(row, guess)) {
+            cout << "Correct! The word is " << scrabble->getTargetWord(row) << endl;
+            if (scrabble->bothSolved())
+                revealCulprit();
+            return true;
+        }
+        detective->loseCredibility(wrongWordPenalty);
+        cout << "Wrong word -" << wrongWordPenalty << " credibility. Credibility left: "
+            << detective->getCredibility() << endl;
+    }
+    return true;
+}
+
+//both words solved: read clue.txt and tell the detective the culprit's role
+void GameEngine::revealCulprit() {
+    string w1 = scrabble->getTargetWord(WORD_1);
+    string w2 = scrabble->getTargetWord(WORD_2);
+    string role = findCulpritRole(w1, w2);
+    string nat = "";
+    for (int i = 1; i < TOTAL_PEOPLE; i++) {
+        if (normalizeRole(characters[i]->getRole()) == normalizeRole(role))
+            nat = characters[i]->getNationality();
+    }
+    cout << endl << "Combined clue: " << (*rackWord1 + *rackWord2) << endl;
+    cout << "Both words solved:" << endl;
+    cout << "  " << w1 << " + " << w2 << " = " << nat << " -> " << role << " is the culprit" << endl;
+}
+
+// Accuse one of the seven suspects
+bool GameEngine::accuseSuspect() {
+    cout << endl << "====== Accuse ======" << endl;
+    for (int i = 1; i < TOTAL_PEOPLE; i++)
+        cout << "[" << i << "] " << *characters[i] << endl;
+    cout << "[0] Back" << endl;
+    int pick = readNumber("Accuse: ", 0, TOTAL_SUSPECTS);
+    if (pick == 0)
+        return false;
+    cout << "Accuse: " << *characters[pick] << endl;
+    if (characters[pick]->isCulprit) {
+        cout << characters[pick]->getName() << " is the culprit" << endl;
+        state = STATE_WON;
+    }
+    else {
+        detective->loseCredibility(wrongTurnPenalty);
+        cout << characters[pick]->getName() << " is innocent -" << wrongTurnPenalty << " credibility." << endl;
+    }
+    return true;
+}
+
+//leave the current game and return to the main menu
+bool GameEngine::quitGame() {
+    if (readYesNo("Quit this game? No score will be saved (Y/N): ")) {
+        state = STATE_MENU;
+        cout << "Case abandoned." << endl;
+    }
+    return false;
+}
+
+//decides if the game is lost
+void GameEngine::checkEndConditions() {
+    if (detective->getCredibility() <= 0) {
+        cout << endl << "Your credibility is gone" << endl;
+        state = STATE_LOST;
+    }
+    else if (detective->getTurns() >= maxTurns) {
+        cout << endl << "You ran out of turns" << endl;
+        state = STATE_LOST;
+    }
+}
+
+//shows the result, saves it to the leader board and returns to the main menu
+void GameEngine::finishGame() {
+    bool won = (state == STATE_WON);
+    string culpritName = "";
+    string role = "";
+    for (int i = 1; i < TOTAL_PEOPLE; i++) {
+        if (characters[i]->isCulprit) {
+            culpritName = characters[i]->getName();
+            role = characters[i]->getRole();
+        }
+    }
+    int turnsLeft = maxTurns - detective->getTurns();
+    if (turnsLeft < 0)
+        turnsLeft = 0;
+    cout << endl << "+====================================================+" << endl;
+    cout << "   " << detective->getName() << (won ? " WIN!" : " LOSE!") << endl;
+    cout << "   Final credibility: " << detective->getCredibility()
+        << " | Turns used: " << detective->getTurns() << " | Culprit: " << role << " " << culpritName << endl;
+    cout << "+====================================================+" << endl;
+
+    string name = detective->getName();
+    int cred = detective->getCredibility();
+    state = STATE_MENU;
+    if (leaderBoard != 0)
+        leaderBoard->addScore(name, won ? "WIN" : "LOSE", cred, turnsLeft, role);
+    pauseScreen();
+    clearScreen();
+    cout << "Screen Cleared" << endl;
+}
+
+//prints the error and applies the wrong step penalty if needed
+void GameEngine::handleException(const GameException& e) {
+    cout << endl << e.getMessage() << endl;
+    if (state == STATE_PLAYING && e.isWrongStep() && detective != 0) {
+        detective->loseCredibility(wrongTurnPenalty);
+        detective->useTurn();
+        cout << "Wrong step -" << wrongTurnPenalty << " credibility and the turn is used." << endl;
+        checkEndConditions();
+    }
+    else if (state == STATE_MENU) {
+        resetGame();                                    // drop any half-built game
+    }
+}
