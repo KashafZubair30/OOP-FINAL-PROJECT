@@ -394,4 +394,79 @@ public:
     void displayScores() const;
 };
 
+class GameEngine {
+private:
+    static GameEngine* instance;
+    static const int TOTAL_PEOPLE = 8;
+    static const int TOTAL_SUSPECTS = 7;
+    static const int TOTAL_LOCATIONS = 7;
+
+    GameState state;
+    int maxTurns;
+    int startCredibility;
+    int wrongTurnPenalty;
+    int wrongWordPenalty;
+    string winCondition;
+    string loseCondition;
+
+    //the engine owns and deletes these
+    Detective* detective;
+    Cottage* cottage;
+    Scrabble* scrabble;
+    TileRack* rackWord1;
+    TileRack* rackWord2;
+    Character* characters[TOTAL_PEOPLE];   // [0] = victim, [1 to 7] = suspects
+
+    //the engine only uses the leader board, it does not own it
+    LeaderBoard* leaderBoard;
+
+    int culpritColumn;
+    string culpritRole;
+
+    GameEngine();
+    GameEngine(const GameEngine&);
+    GameEngine& operator=(const GameEngine&);
+
+    void resetGame();
+    bool loadRules();
+    void loadCharacters(const string& fileName);
+    Character* createCharacter(const string& name, const string& role, const string& nat,
+        char letter, int pos);
+    void loadClueWords(const string& fileName);
+    string findCulpritRole(const string& w1, const string& w2) const;
+
+    string readLine();
+    int readNumber(const string& prompt, int minValue, int maxValue);
+    bool readYesNo(const string& prompt);
+    void pauseScreen();
+    string askDetectiveName();
+
+    void showMainMenu() const;
+    void showGameMenu() const;
+    void showStatus() const;
+    void showAbout();
+    void showRules();
+    void startNewGame();
+    void mainMenuStep();
+    void playTurn();
+    bool visitLocation();
+    bool interviewPerson();
+    bool formWord();
+    bool accuseSuspect();
+    bool quitGame();
+    void revealCulprit();
+    void checkEndConditions();
+    void finishGame();
+public:
+    static GameEngine* getInstance();
+    static void destroyInstance();
+    ~GameEngine();
+
+    void setLeaderBoard(LeaderBoard* board);
+    GameState getState() const;
+    void showTitle() const;
+    void runStep();
+    void handleException(const GameException& e);
+};
+
 #endif
